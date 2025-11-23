@@ -1,7 +1,9 @@
 import { useState } from "react";
+
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Shield, Zap, Clock } from "lucide-react";
 import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import PricingCard from "@/components/PricingCard";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 
 import gameMl from "@/assets/game-ml.jpg";
 import gameFreeFire from "@/assets/game-freefire.jpg";
@@ -38,6 +42,14 @@ const games = {
     image: gamePubg,
     description: "The original battle royale experience on mobile. Use UC to get exclusive outfits, weapon skins, and Royale Pass.",
     instructions: "Enter your PUBG Mobile Player ID to receive UC instantly.",
+  },
+  "steam-wallet": {
+    name: "Steam Wallet",
+    image: gameApex,
+    description:
+      "Top up your Steam Wallet balance to purchase games, DLCs, in-game items, and more across the Steam platform.",
+    instructions:
+      "Enter your Steam account ID or email associated with your Steam account so we can process the wallet top-up.",
   },
   "genshin-impact": {
     name: "Genshin Impact",
@@ -89,14 +101,62 @@ const pricingTiers = [
 const GameDetail = () => {
   const { gameId } = useParams();
   const { toast } = useToast();
+  const { customer } = useAuth();
+
   const game = gameId ? games[gameId] : null;
 
-  const currencyLabel = gameId === "genshin-impact" ? "Genesis Crystals" : "Diamonds";
+  const currencyLabel =
+    gameId === "genshin-impact"
+      ? "Genesis Crystals"
+      : gameId === "steam-wallet"
+      ? "Steam Wallet"
+      : "Diamonds";
   const currencyLabelLower = currencyLabel.toLowerCase();
+
+  const requiresGameId = gameId !== "steam-wallet";
 
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [userId, setUserId] = useState("");
   const [serverId, setServerId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: productsData } = useQuery({
+    queryKey: ["products", gameId],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:5000/api/products?gameId=${gameId}`);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to load products");
+      }
+      return json.products;
+    },
+    enabled: !!gameId,
+  });
+
+  const hasDbProducts = productsData && productsData.length > 0;
+
+  const packages = hasDbProducts
+    ? productsData.map((product) => ({
+        amount: product.nama_produk,
+        price: Number(product.harga_jual_aktual).toString(),
+        bonus: "",
+        productId: product.produkid || product.produkId,
+      }))
+    : pricingTiers;
+
+  const { data: paymentMethods } = useQuery({
+    queryKey: ["payment-methods"],
+    queryFn: async () => {
+      const res = await fetch("http://localhost:5000/api/payment-methods");
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to load payment methods");
+      }
+      return json.methods;
+    },
+  });
+
+  const [selectedMethodId, setSelectedMethodId] = useState(null);
 
   if (!game) {
     return (
@@ -111,7 +171,7 @@ const GameDetail = () => {
     );
   }
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     if (!selectedPackage) {
       toast({
         title: "Select a package",
@@ -121,7 +181,16 @@ const GameDetail = () => {
       return;
     }
 
-    if (!userId.trim()) {
+    if (!selectedMethodId) {
+      toast({
+        title: "Select a payment method",
+        description: "Please choose a payment method to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (requiresGameId && !userId.trim()) {
       toast({
         title: "User ID required",
         description: "Please enter your User ID to complete the purchase.",
@@ -130,14 +199,58 @@ const GameDetail = () => {
       return;
     }
 
-    toast({
-      title: "Purchase Successful! ",
-      description: `${selectedPackage.amount} ${currencyLabelLower} will be credited to your account within 5 minutes.`,
-    });
+    const payload = {
+      gameId,
+      packageAmount: selectedPackage.amount,
+      price: selectedPackage.price,
+      bonus: selectedPackage.bonus ?? "",
+      userId: userId.trim(),
+      serverId: serverId.trim() || null,
+      paymentMethodId: selectedMethodId,
+      customerId: customer?.pelangganid ?? null,
+      productId: selectedPackage.productId ?? null,
+    };
 
-    setSelectedPackage(null);
-    setUserId("");
-    setServerId("");
+    try {
+      setIsSubmitting(true);
+      const response = await fetch("http://localhost:5000/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to create transaction");
+      }
+
+      toast({
+        title: "Purchase Successful!",
+        description:
+          data.invoiceNumber
+            ? `Your order has been created with invoice ${data.invoiceNumber}. ${payload.packageAmount} ${currencyLabelLower} will be credited to your account within 5 minutes.`
+            : `${payload.packageAmount} ${currencyLabelLower} will be credited to your account within 5 minutes.`,
+      });
+
+      setSelectedPackage(null);
+      setUserId("");
+      setServerId("");
+      setSelectedMethodId(null);
+    } catch (error) {
+      toast({
+        title: "Purchase failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while processing your purchase.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -186,7 +299,7 @@ const GameDetail = () => {
           <p className="text-muted-foreground mb-6">Choose the {currencyLabelLower} package that suits your needs</p>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {pricingTiers.map((tier) => (
+            {packages.map((tier) => (
               <div key={tier.amount} onClick={() => setSelectedPackage(tier)} className="cursor-pointer">
                 <PricingCard amount={tier.amount} price={tier.price} bonus={tier.bonus} popular={tier.popular} currencyLabel={currencyLabel} onSelect={() => setSelectedPackage(tier)} />
               </div>
@@ -213,29 +326,96 @@ const GameDetail = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Total</p>
-                    <p className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">${selectedPackage.price}</p>
+                    <p className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">
+                      {new Intl.NumberFormat("id-ID", {
+                        style: "currency",
+                        currency: "IDR",
+                        maximumFractionDigits: 0,
+                      }).format(Number(selectedPackage.price || 0))}
+                    </p>
                   </div>
                 </div>
               </div>
             )}
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="userId">User ID *</Label>
-                <Input id="userId" type="text" placeholder="Enter your User ID" value={userId} onChange={(e) => setUserId(e.target.value)} className="bg-secondary border-border focus:border-primary" maxLength={100} />
-              </div>
+              {requiresGameId ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="userId">User ID *</Label>
+                    <Input
+                      id="userId"
+                      type="text"
+                      placeholder="Enter your User ID"
+                      value={userId}
+                      onChange={(e) => setUserId(e.target.value)}
+                      className="bg-secondary border-border focus:border-primary"
+                      maxLength={100}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="serverId">Server ID (if applicable)</Label>
+                    <Input
+                      id="serverId"
+                      type="text"
+                      placeholder="Enter your Server ID"
+                      value={serverId}
+                      onChange={(e) => setServerId(e.target.value)}
+                      className="bg-secondary border-border focus:border-primary"
+                      maxLength={50}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No game ID is required for Steam Wallet top up. Please just select a package and payment method.
+                </p>
+              )}
 
               <div className="space-y-2">
-                <Label htmlFor="serverId">Server ID (if applicable)</Label>
-                <Input id="serverId" type="text" placeholder="Enter your Server ID" value={serverId} onChange={(e) => setServerId(e.target.value)} className="bg-secondary border-border focus:border-primary" maxLength={50} />
+                <Label>Payment Method *</Label>
+                <div className="space-y-2">
+                  {paymentMethods?.map((method) => (
+                    <button
+                      key={method.metodeid}
+                      type="button"
+                      onClick={() => setSelectedMethodId(method.metodeid)}
+                      className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
+                        selectedMethodId === method.metodeid
+                          ? "border-primary bg-secondary"
+                          : "border-border bg-background hover:bg-secondary/60"
+                      }`}
+                    >
+                      <span>{method.nama_metode}</span>
+                      {method.biaya_admin > 0 && (
+                        <span className="text-xs text-muted-foreground">Admin Rp{Number(method.biaya_admin).toLocaleString("id-ID")}</span>
+                      )}
+                    </button>
+                  ))}
+                  {!paymentMethods && (
+                    <p className="text-xs text-muted-foreground">Loading payment methods...</p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <Button onClick={handlePurchase} disabled={!selectedPackage || !userId.trim()} className="w-full bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed">
-              Complete Purchase
+            <Button
+              onClick={handlePurchase}
+              disabled={
+                isSubmitting ||
+                !selectedPackage ||
+                !selectedMethodId ||
+                (requiresGameId && !userId.trim())
+              }
+              className="w-full bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Processing..." : "Complete Purchase"}
             </Button>
 
-            <p className="text-xs text-muted-foreground text-center">By completing this purchase, you agree to our Terms of Service and Privacy Policy.</p>
+            <p className="text-xs text-muted-foreground text-center">
+              By completing this purchase, you agree to our Terms of Service and Privacy Policy.
+            </p>
           </div>
         </Card>
       </main>

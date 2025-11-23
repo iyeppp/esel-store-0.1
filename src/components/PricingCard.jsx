@@ -3,6 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
 
 const PricingCard = ({ amount, price, bonus, popular, onSelect, currencyLabel = "Diamonds" }) => {
+  const formattedPrice = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(Number(price || 0));
+
   return (
     <Card
       className={`relative p-6 transition-all duration-300 hover:scale-105 ${
@@ -28,7 +34,7 @@ const PricingCard = ({ amount, price, bonus, popular, onSelect, currencyLabel = 
         )}
 
         <div className="pt-2">
-          <div className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">${price}</div>
+          <div className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">{formattedPrice}</div>
         </div>
 
         <Button onClick={onSelect} className={popular ? "w-full bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary" : "w-full bg-secondary hover:bg-secondary/80"}>
