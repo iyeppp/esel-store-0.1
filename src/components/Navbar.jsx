@@ -2,8 +2,11 @@ import { Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
+  const { customer, logout, isAdmin } = useAuth();
+
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
       <div className="container mx-auto px-4">
@@ -22,12 +25,36 @@ const Navbar = () => {
             </div>
           </div>
 
-          <Link to="/signin">
-            <Button variant="default" className="bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary">
-              <User className="mr-2 h-4 w-4" />
-              Account
-            </Button>
-          </Link>
+          {customer ? (
+            <div className="flex items-center gap-3">
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="text-xs font-medium text-primary hover:underline hidden sm:inline"
+                >
+                  Admin
+                </Link>
+              )}
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                Hi, <span className="font-medium text-foreground">{customer.nama_client || "Customer"}</span>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border"
+                onClick={logout}
+              >
+                Logout
+              </Button>
+            </div>
+          ) : (
+            <Link to="/signin">
+              <Button variant="default" className="bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary">
+                <User className="mr-2 h-4 w-4" />
+                Account
+              </Button>
+            </Link>
+          )}
         </div>
 
         <div className="border-t border-border">
@@ -37,6 +64,7 @@ const Navbar = () => {
               { label: "Mobile Legends", to: "/game/mobile-legends" },
               { label: "Genshin Impact", to: "/game/genshin-impact" },
               { label: "Steam Wallet", to: "/game/steam-wallet" },
+              { label: "Orders", to: "/orders" },
             ].map(({ label, to }) => (
               <Link key={label} to={to} className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap px-2">
                 {label}
