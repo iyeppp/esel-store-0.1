@@ -3,12 +3,17 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminOrders = () => {
+  const { role } = useAuth();
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/orders?status=Pending");
+      const res = await fetch("http://localhost:5000/api/admin/orders?status=Pending", {
+        headers: role ? { "x-admin-role": role } : {},
+      });
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.message || "Failed to load orders");
@@ -22,7 +27,10 @@ const AdminOrders = () => {
   const updateStatus = async (transaksiId, status) => {
     await fetch(`http://localhost:5000/api/transactions/${transaksiId}/status`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(role ? { "x-admin-role": role } : {}),
+      },
       body: JSON.stringify({ status }),
     });
     refetch();

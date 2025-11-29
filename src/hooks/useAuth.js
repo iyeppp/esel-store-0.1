@@ -1,21 +1,27 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-const ADMIN_EMAIL_WHITELIST = [
-  "admin_staff@example.com",
-  "owner@example.com",
-  "administrator@example.com",
-];
+const ROLE_EMAIL_MAP = {
+  "owner@example.com": "owner",
+  "administrator@example.com": "admin",
+  "admin_staff@example.com": "ordersAdmin",
+};
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [customer, setCustomer] = useState(null);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("gt_current_customer");
     if (stored) {
       try {
-        setCustomer(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setCustomer(parsed);
+        if (parsed && parsed.email) {
+          const emailKey = String(parsed.email).toLowerCase();
+          setRole(ROLE_EMAIL_MAP[emailKey] ?? null);
+        }
       } catch {
         // ignore
       }
@@ -24,22 +30,29 @@ export const AuthProvider = ({ children }) => {
 
   const login = (cust) => {
     setCustomer(cust);
+    if (cust && cust.email) {
+      const emailKey = String(cust.email).toLowerCase();
+      setRole(ROLE_EMAIL_MAP[emailKey] ?? null);
+    } else {
+      setRole(null);
+    }
     localStorage.setItem("gt_current_customer", JSON.stringify(cust));
   };
 
   const logout = () => {
     setCustomer(null);
+    setRole(null);
     localStorage.removeItem("gt_current_customer");
   };
 
-  const isAdmin =
-    !!customer &&
-    !!customer.email &&
-    ADMIN_EMAIL_WHITELIST.includes(String(customer.email).toLowerCase());
+  const isOwner = role === "owner";
+  const isFullAdmin = role === "admin" || isOwner;
+  const isOrdersAdmin = role === "ordersAdmin" || isFullAdmin;
+  const isAnyAdmin = !!role;
 
   return React.createElement(
     AuthContext.Provider,
-    { value: { customer, login, logout, isAdmin } },
+    { value: { customer, login, logout, role, isOwner, isFullAdmin, isOrdersAdmin, isAnyAdmin } },
     children
   );
 };

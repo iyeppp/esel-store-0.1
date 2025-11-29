@@ -8,9 +8,9 @@ const Footer = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gradient-gaming rounded-lg flex items-center justify-center shadow-glow-primary">
-                <span className="text-2xl font-bold text-primary-foreground">G</span>
+                <span className="text-2xl font-bold text-primary-foreground">eS</span>
               </div>
-              <span className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">GameTopUp</span>
+              <span className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">eSeL Store</span>
             </div>
             <p className="text-muted-foreground max-w-md">Your trusted platform for fast and secure game top-ups. Get instant credits for all your favorite games.</p>
           </div>
@@ -34,7 +34,7 @@ const Footer = () => {
           </div>
         </div>
         <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-          <p>&copy; 2024 GameTopUp. All rights reserved.</p>
+          <p>&copy; 2024 eSeL Store. All rights reserved.</p>
         </div>
       </div>
     </footer>

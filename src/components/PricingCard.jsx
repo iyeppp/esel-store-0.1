@@ -37,7 +37,14 @@ const PricingCard = ({ amount, price, bonus, popular, onSelect, currencyLabel = 
           <div className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">{formattedPrice}</div>
         </div>
 
-        <Button onClick={onSelect} className={popular ? "w-full bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary" : "w-full bg-secondary hover:bg-secondary/80"}>
+        <Button
+          onClick={onSelect}
+          className={
+            popular
+              ? "w-full bg-gradient-gaming hover:opacity-90 transition-opacity shadow-glow-primary"
+              : "w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          }
+        >
           Purchase Now
         </Button>
       </div>

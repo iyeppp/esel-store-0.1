@@ -5,9 +5,16 @@ import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminProducts = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+
+  const adminHeaders = {
+    "Content-Type": "application/json",
+    ...(role ? { "x-admin-role": role } : {}),
+  };
 
   const [newProduct, setNewProduct] = useState({
     categoryId: "",
@@ -21,7 +28,9 @@ const AdminProducts = () => {
   const { data: categoriesData } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/categories");
+      const res = await fetch("http://localhost:5000/api/categories", {
+        headers: adminHeaders,
+      });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to load categories");
       return json.categories;
@@ -31,7 +40,9 @@ const AdminProducts = () => {
   const { data: productsData, isLoading, isError } = useQuery({
     queryKey: ["admin-products"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/admin/products");
+      const res = await fetch("http://localhost:5000/api/admin/products", {
+        headers: adminHeaders,
+      });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to load products");
       return json.products;
@@ -54,7 +65,7 @@ const AdminProducts = () => {
 
       const res = await fetch("http://localhost:5000/api/admin/products", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders,
         body: JSON.stringify(body),
       });
       const json = await res.json();
@@ -80,7 +91,7 @@ const AdminProducts = () => {
 
       const res = await fetch(`http://localhost:5000/api/admin/products/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders,
         body: JSON.stringify(body),
       });
       const json = await res.json();
@@ -96,6 +107,7 @@ const AdminProducts = () => {
     mutationFn: async (id) => {
       const res = await fetch(`http://localhost:5000/api/admin/products/${id}`, {
         method: "DELETE",
+        headers: role ? { "x-admin-role": role } : {},
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete product");

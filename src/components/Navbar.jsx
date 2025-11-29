@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
-  const { customer, logout, isAdmin } = useAuth();
+  const { customer, logout, isFullAdmin, isOrdersAdmin } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
@@ -13,9 +13,9 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 bg-gradient-gaming rounded-lg flex items-center justify-center shadow-glow-primary">
-              <span className="text-2xl font-bold text-primary-foreground">G</span>
+              <span className="text-2xl font-bold text-primary-foreground">eS</span>
             </div>
-            <span className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">GameTopUp</span>
+            <span className="text-2xl font-bold bg-gradient-gaming bg-clip-text text-transparent">eSeL Store</span>
           </Link>
 
           <div className="flex-1 max-w-2xl mx-8">
@@ -27,12 +27,20 @@ const Navbar = () => {
 
           {customer ? (
             <div className="flex items-center gap-3">
-              {isAdmin && (
+              {isFullAdmin && (
                 <Link
                   to="/admin"
                   className="text-xs font-medium text-primary hover:underline hidden sm:inline"
                 >
                   Admin
+                </Link>
+              )}
+              {!isFullAdmin && isOrdersAdmin && (
+                <Link
+                  to="/admin/orders"
+                  className="text-xs font-medium text-primary hover:underline hidden sm:inline"
+                >
+                  Orders Admin
                 </Link>
               )}
               <span className="text-sm text-muted-foreground hidden sm:inline">

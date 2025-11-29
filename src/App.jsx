@@ -5,12 +5,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import RequireAdmin from "./components/RequireAdmin";
+import RequireOrdersAdmin from "./components/RequireOrdersAdmin";
 
 import Index from "./pages/Index";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import GameDetail from "./pages/GameDetail";
 import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
 import AdminOrders from "./pages/AdminOrders";
 import AdminCategories from "./pages/AdminCategories";
 import AdminProducts from "./pages/AdminProducts";
@@ -34,6 +36,7 @@ const App = () => (
             <Route path="/signup" element={<SignUp />} />
             <Route path="/game/:gameId" element={<GameDetail />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/:invoiceNumber" element={<OrderDetail />} />
             <Route
               path="/admin"
               element={(
@@ -45,9 +48,9 @@ const App = () => (
             <Route
               path="/admin/orders"
               element={(
-                <RequireAdmin>
+                <RequireOrdersAdmin>
                   <AdminOrders />
-                </RequireAdmin>
+                </RequireOrdersAdmin>
               )}
             />
             <Route

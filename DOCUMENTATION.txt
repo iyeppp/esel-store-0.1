@@ -1,0 +1,137 @@
+eSeL Store - Top Up Game Credits
+================================
+
+1. Deskripsi Proyek
+-------------------
+Aplikasi web eSeL Store adalah platform top up kredit game secara online.
+Fitur utama:
+- Pelanggan dapat memilih game, paket top up, mengisi data akun game, dan memilih metode pembayaran.
+- Sistem mencatat transaksi, detail transaksi, dan akun game pelanggan di database PostgreSQL.
+- Admin dapat mengelola kategori produk, produk top up, metode pembayaran, dan melihat laporan harian.
+- Admin khusus (orders staff) dapat mengelola pesanan pending dan mengubah status transaksi.
+
+2. Teknologi yang Digunakan
+---------------------------
+Frontend:
+- React + Vite
+- React Router
+- @tanstack/react-query
+- Tailwind CSS + shadcn/ui
+
+Backend:
+- Node.js + Express
+- PostgreSQL (via pg)
+- dotenv, cors
+
+3. Skema Basis Data (Ringkas)
+-----------------------------
+Tabel utama:
+- Tabel_Kategori_Produk (kategoriid, nama_kategori, membutuhkan_gameid)
+- Tabel_Produk (produkid, kategoriid, nama_produk, sku, harga_modal_aktual, harga_jual_aktual, deskripsi)
+- Tabel_Pelanggan (pelangganid, nama_client, nomor_hp, email, tanggal_daftar)
+- Tabel_Metode_Pembayaran (metodeid, nama_metode, tipe_metode, biaya_admin)
+- Tabel_Akun_Game_Pelanggan (akungameid, pelangganid, kategoriid, game_userid, game_nickname, server)
+- Tabel_Transaksi (transaksiid, invoice_number, pelangganid, metodeid, tanggal_transaksi, status_transaksi, total_struk, total_keuntungan)
+- Tabel_Detail_Transaksi (detailid, transaksiid, produkid, akungameid, jumlah, harga_modal_saat_transaksi, harga_jual_saat_transaksi, keuntungan_item)
+
+Objek pendukung:
+- View_Laporan_Keuntungan_Harian (laporan omzet & keuntungan per hari)
+- View_Detail_Transaksi_Lengkap (digunakan untuk halaman orders & detail invoice)
+- Stored procedure sp_Update_Status_Bayar (update status transaksi dan perhitungan terkait)
+
+4. Endpoint Backend Utama
+-------------------------
+Customers:
+- POST /api/customers/signup
+- POST /api/customers/signin
+
+Games & Products:
+- GET  /api/games
+- GET  /api/products?gameId={slug}
+
+Metode Pembayaran:
+- GET  /api/payment-methods
+
+Transaksi:
+- POST /api/transactions
+  Body berisi: gameId, packageAmount, price, bonus, userId, serverId, paymentMethodId, customerId (opsional), productId.
+- POST /api/transactions/:id/status  (hanya admin/orders staff)
+
+Orders (riwayat & detail):
+- GET  /api/orders?status={Status}&customerId={PelangganID}   (publik, digunakan pelanggan)
+- GET  /api/admin/orders?status={Status}&customerId={PelangganID} (admin/orders staff)
+- GET  /api/orders/invoice/:invoiceNumber (detail transaksi per invoice)
+
+Admin - Kategori & Produk:
+- GET  /api/categories
+- POST /api/categories
+- PUT  /api/categories/:id
+- DELETE /api/categories/:id
+
+- GET  /api/admin/products
+- POST /api/admin/products
+- PUT  /api/admin/products/:id
+- DELETE /api/admin/products/:id
+
+Admin - Laporan:
+- GET  /api/admin/reports/daily
+
+5. Role & Hak Akses
+-------------------
+Role ditentukan di frontend berdasarkan email dan dikirim ke backend via header: x-admin-role.
+- owner@example.com      -> role: owner
+- administrator@example.com -> role: admin
+- admin_staff@example.com   -> role: ordersAdmin
+
+Flag role:
+- isOwner: role === "owner"
+- isFullAdmin: role === "admin" atau owner
+- isOrdersAdmin: role === "ordersAdmin" atau isFullAdmin
+
+Backend middleware:
+- requireFullAdmin: hanya mengizinkan owner dan admin.
+  Digunakan di:
+  - /api/categories...
+  - /api/admin/products...
+  - /api/admin/reports/daily
+
+- requireOrdersAdmin: mengizinkan owner, admin, ordersAdmin.
+  Digunakan di:
+  - /api/admin/orders...
+  - /api/transactions/:id/status
+
+6. Flow Utama Sistem
+--------------------
+Flow pelanggan:
+1. Pelanggan sign up / sign in.
+2. Pilih game dari halaman utama (data dari /api/games).
+3. Pilih paket top up (data produk dari /api/products?gameId=...).
+4. Isi data akun game (UserID, ServerID jika diperlukan).
+5. Pilih metode pembayaran (data dari /api/payment-methods).
+6. Klik "Complete Purchase" -> frontend memanggil POST /api/transactions.
+7. Transaksi tercatat di Tabel_Transaksi & Tabel_Detail_Transaksi.
+8. Pelanggan melihat riwayat di /orders (GET /api/orders?customerId=...).
+9. Pelanggan dapat melihat detail per invoice di /orders/:invoiceNumber.
+
+Flow admin orders staff:
+1. Login dengan email admin_staff@example.com.
+2. Buka /admin/orders -> memanggil GET /api/admin/orders?status=Pending.
+3. Update status transaksi menjadi Success / Failed melalui POST /api/transactions/:id/status.
+4. Status di halaman Orders pelanggan ikut ter-update.
+
+Flow admin/owner penuh:
+1. Login dengan email administrator@example.com atau owner@example.com.
+2. Mengakses dashboard admin (/admin) untuk shortcut:
+   - /admin/products: CRUD produk.
+   - /admin/categories: CRUD kategori.
+   - /admin/reports/daily: lihat laporan omzet & keuntungan harian.
+
+7. Catatan Implementasi
+-----------------------
+- Frontend dan backend dipisah:
+  - Frontend: root project (Vite React) dengan entry src/main.jsx.
+  - Backend: folder server/ dengan entry server/src/index.js.
+- Koneksi database diatur melalui server/.env dan server/src/config/db.js.
+- Seluruh query DB menggunakan parameterized query (pg.Pool) untuk keamanan dasar.
+
+Dokumentasi ini dimaksudkan sebagai ringkasan cepat untuk keperluan tugas kuliah dan peninjauan kode.

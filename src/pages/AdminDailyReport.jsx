@@ -2,12 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminDailyReport = () => {
+  const { role } = useAuth();
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-daily-report"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/admin/reports/daily");
+      const res = await fetch("http://localhost:5000/api/admin/reports/daily", {
+        headers: role ? { "x-admin-role": role } : {},
+      });
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.message || "Failed to load daily report");

@@ -49,9 +49,9 @@ const SignUp = () => {
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-3 mb-8">
           <div className="w-12 h-12 bg-gradient-gaming rounded-lg flex items-center justify-center shadow-glow-primary">
-            <span className="text-3xl font-bold text-primary-foreground">G</span>
+            <span className="text-3xl font-bold text-primary-foreground">eS</span>
           </div>
-          <span className="text-3xl font-bold bg-gradient-gaming bg-clip-text text-transparent">GameTopUp</span>
+          <span className="text-3xl font-bold bg-gradient-gaming bg-clip-text text-transparent">eSeL Store</span>
         </Link>
 
         <div className="bg-card border border-border rounded-xl p-8 shadow-lg">

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
@@ -48,27 +49,33 @@ const Orders = () => {
         {!isLoading && !isError && orders.length > 0 && (
           <div className="space-y-4">
             {orders.map((order) => (
-              <Card key={order.invoice_number + order.nama_produk} className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Invoice: <span className="font-mono">{order.invoice_number}</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Date: {new Date(order.tanggal_transaksi).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-foreground font-medium mt-1">
-                    {order.game} - {order.nama_produk} x{order.jumlah}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    UID: {order.target_uid} | Nickname: {order.target_nickname}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground mb-1">Payment</p>
-                  <p className="text-sm text-foreground font-medium">{order.pembayaran}</p>
-                  <p className="text-xs text-muted-foreground mt-2">Status: {order.status_transaksi}</p>
-                </div>
-              </Card>
+              <Link
+                key={order.invoice_number + order.nama_produk}
+                to={`/orders/${order.invoice_number}`}
+                className="block"
+              >
+                <Card className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 hover:border-primary transition-colors cursor-pointer">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Invoice: <span className="font-mono">{order.invoice_number}</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Date: {new Date(order.tanggal_transaksi).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-foreground font-medium mt-1">
+                      {order.game} - {order.nama_produk} x{order.jumlah}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      UID: {order.target_uid} | Nickname: {order.target_nickname}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground mb-1">Payment</p>
+                    <p className="text-sm text-foreground font-medium">{order.pembayaran}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Status: {order.status_transaksi}</p>
+                  </div>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
