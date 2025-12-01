@@ -6,11 +6,24 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 
 const Orders = () => {
-  const { customer } = useAuth();
+  const { customer, role, isAnyAdmin } = useAuth();
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["orders", customer?.pelangganid ?? "guest"],
+    queryKey: ["orders", isAnyAdmin ? "admin-all" : customer?.pelangganid ?? "guest"],
     queryFn: async () => {
+      // Admin (owner / administrator / ordersAdmin) can see all orders
+      if (isAnyAdmin) {
+        const res = await fetch("http://localhost:5000/api/admin/orders", {
+          headers: role ? { "x-admin-role": role } : {},
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.message || "Failed to load orders");
+        }
+        return json.orders;
+      }
+
+      // Public / normal customer: filter by own customerId when logged in
       const baseUrl = "http://localhost:5000/api/orders";
       const url = customer?.pelangganid
         ? `${baseUrl}?customerId=${customer.pelangganid}`
@@ -36,9 +49,15 @@ const Orders = () => {
         {isLoading && <p className="text-muted-foreground">Loading orders...</p>}
         {isError && <p className="text-destructive">Failed to load orders.</p>}
 
-        {!customer && !isLoading && !isError && (
+        {!isAnyAdmin && !customer && !isLoading && !isError && (
           <p className="mb-4 text-sm text-muted-foreground">
             You are viewing all recent orders. Sign in to see only your own orders.
+          </p>
+        )}
+
+        {isAnyAdmin && !isLoading && !isError && (
+          <p className="mb-4 text-sm text-muted-foreground">
+            You are viewing all recent orders as an admin account.
           </p>
         )}
 
