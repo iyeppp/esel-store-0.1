@@ -24,6 +24,11 @@ const tiles = [
     description: "View omzet and profit summarized per day.",
     href: "/admin/reports/daily",
   },
+  {
+    title: "Category Performance",
+    description: "See omzet and profit per game category.",
+    href: "/admin/reports/categories",
+  },
 ];
 
 const AdminHome = () => {

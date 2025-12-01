@@ -14,7 +14,7 @@ dist-ssr
 
 # Environment & database seed
 .env
-eselsql.sql
+
 
 # Editor directories and files
 .vscode/*

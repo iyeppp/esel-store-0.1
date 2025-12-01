@@ -11,7 +11,7 @@ const PricingCard = ({ amount, price, bonus, popular, onSelect, currencyLabel = 
 
   return (
     <Card
-      className={`relative p-6 transition-all duration-300 hover:scale-105 ${
+      className={`relative p-6 h-full transition-all duration-300 hover:scale-105 ${
         popular ? "border-primary bg-gradient-to-br from-card to-secondary shadow-glow-primary" : "border-border bg-card hover:border-primary/50"
       }`}
     >
@@ -21,9 +21,9 @@ const PricingCard = ({ amount, price, bonus, popular, onSelect, currencyLabel = 
         </div>
       )}
 
-      <div className="text-center space-y-4">
-        <div>
-          <div className="text-3xl font-bold text-foreground mb-1">{amount}</div>
+      <div className="text-center space-y-4 flex flex-col h-full justify-between">
+        <div className="min-h-[64px] flex flex-col items-center justify-center">
+          <div className="text-3xl font-bold text-foreground mb-1 break-words text-balance">{amount}</div>
           <div className="text-sm text-muted-foreground">{currencyLabel}</div>
         </div>
 

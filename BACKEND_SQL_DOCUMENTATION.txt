@@ -1,0 +1,372 @@
+BACKEND - FITUR & SQL eSeL Store
+=================================
+
+Dokumen ini menjelaskan fitur backend yang berinteraksi dengan basis data
+(PostgreSQL) beserta perintah SQL utama yang dijalankan per fitur.
+
+---------------------------------
+1. Customers (Pelanggan)
+---------------------------------
+
+1.1. Sign Up Pelanggan
+----------------------
+Endpoint:
+- POST /api/customers/signup
+
+Fungsi:
+- Mendaftarkan pelanggan baru ke Tabel_Pelanggan.
+- Mengecek duplikasi email / nomor HP.
+
+SQL yang dijalankan:
+1) Cek pelanggan sudah ada atau belum
+
+  SELECT pelangganid
+  FROM tabel_pelanggan
+  WHERE email = $1 OR nomor_hp = $2;
+
+2) Insert pelanggan baru
+
+  INSERT INTO tabel_pelanggan (nama_client, nomor_hp, email)
+  VALUES ($1, $2, $3)
+  RETURNING pelangganid, nama_client, nomor_hp, email;
+
+
+1.2. Sign In Pelanggan
+----------------------
+Endpoint:
+- POST /api/customers/signin
+
+Fungsi:
+- Mengambil data pelanggan berdasarkan email untuk login sederhana (tanpa password).
+
+SQL:
+
+  SELECT pelangganid, nama_client, nomor_hp, email
+  FROM tabel_pelanggan
+  WHERE email = $1;
+
+
+---------------------------------
+2. Games & Products
+---------------------------------
+
+2.1. Daftar Game (Kategori Produk)
+----------------------------------
+Endpoint:
+- GET /api/games
+
+Fungsi:
+- Mengambil daftar kategori game dari Tabel_Kategori_Produk.
+
+SQL:
+
+  SELECT kategoriid, nama_kategori, membutuhkan_gameid
+  FROM tabel_kategori_produk
+  ORDER BY kategoriid;
+
+
+2.2. Daftar Produk Per Game
+---------------------------
+Endpoint:
+- GET /api/products?gameId={slug}
+
+Fungsi:
+- Mengambil produk top up untuk game tertentu (berdasarkan nama_kategori).
+- Mapping slug (misal `mobile-legends`) ke nama kategori (misal `"Mobile Legends"`).
+
+SQL:
+
+  SELECT p.produkid, p.nama_produk, p.sku, p.harga_jual_aktual, p.deskripsi
+  FROM tabel_produk p
+  JOIN tabel_kategori_produk k ON p.kategoriid = k.kategoriid
+  WHERE k.nama_kategori = $1
+  ORDER BY p.harga_jual_aktual ASC;
+
+
+---------------------------------
+3. Metode Pembayaran
+---------------------------------
+
+3.1. Daftar Metode Pembayaran
+-----------------------------
+Endpoint:
+- GET /api/payment-methods
+
+Fungsi:
+- Mengambil semua metode pembayaran dari Tabel_Metode_Pembayaran.
+
+SQL:
+
+  SELECT metodeid, nama_metode, tipe_metode, biaya_admin
+  FROM tabel_metode_pembayaran
+  ORDER BY metodeid;
+
+
+---------------------------------
+4. Kategori Produk (Admin)
+---------------------------------
+
+Endpoint terkait:
+- GET    /api/categories
+- POST   /api/categories
+- PUT    /api/categories/:id
+- DELETE /api/categories/:id
+
+Semua endpoint ini menggunakan middleware `requireFullAdmin`
+(Owner/Admin saja).
+
+4.1. List Kategori
+------------------
+SQL:
+
+  SELECT kategoriid, nama_kategori, membutuhkan_gameid
+  FROM tabel_kategori_produk
+  ORDER BY kategoriid;
+
+4.2. Tambah Kategori
+--------------------
+SQL:
+
+  INSERT INTO tabel_kategori_produk (nama_kategori, membutuhkan_gameid)
+  VALUES ($1, $2)
+  RETURNING kategoriid, nama_kategori, membutuhkan_gameid;
+
+4.3. Update Kategori
+--------------------
+SQL:
+
+  UPDATE tabel_kategori_produk
+  SET nama_kategori = $1,
+      membutuhkan_gameid = $2
+  WHERE kategoriid = $3
+  RETURNING kategoriid, nama_kategori, membutuhkan_gameid;
+
+4.4. Hapus Kategori
+-------------------
+SQL:
+
+  DELETE FROM tabel_kategori_produk
+  WHERE kategoriid = $1;
+
+
+---------------------------------
+5. Produk (Admin)
+---------------------------------
+
+Endpoint:
+- GET    /api/admin/products
+- POST   /api/admin/products
+- PUT    /api/admin/products/:id
+- DELETE /api/admin/products/:id
+
+Semua endpoint ini dilindungi `requireFullAdmin`.
+
+5.1. List Produk
+----------------
+SQL:
+
+  SELECT produkid, kategoriid, nama_produk, sku,
+         harga_modal_aktual, harga_jual_aktual, deskripsi
+  FROM tabel_produk
+  ORDER BY produkid;
+
+5.2. Tambah Produk
+------------------
+SQL:
+
+  INSERT INTO tabel_produk (
+    kategoriid, nama_produk, sku,
+    harga_modal_aktual, harga_jual_aktual, deskripsi
+  )
+  VALUES ($1, $2, $3, $4, $5, $6)
+  RETURNING produkid, kategoriid, nama_produk, sku,
+            harga_modal_aktual, harga_jual_aktual, deskripsi;
+
+5.3. Update Produk
+------------------
+SQL:
+
+  UPDATE tabel_produk
+  SET kategoriid = $1,
+      nama_produk = $2,
+      sku = $3,
+      harga_modal_aktual = $4,
+      harga_jual_aktual = $5,
+      deskripsi = $6
+  WHERE produkid = $7
+  RETURNING produkid, kategoriid, nama_produk, sku,
+            harga_modal_aktual, harga_jual_aktual, deskripsi;
+
+5.4. Hapus Produk
+-----------------
+SQL:
+
+  DELETE FROM tabel_produk
+  WHERE produkid = $1;
+
+
+---------------------------------
+6. Transaksi & Orders
+---------------------------------
+
+6.1. Membuat Transaksi (Checkout)
+---------------------------------
+Endpoint:
+- POST /api/transactions
+
+Fungsi:
+- Membuat transaksi top up baru.
+- (Opsional) Menentukan pelanggan guest default.
+- (Opsional) Upsert akun game pelanggan (khusus Mobile Legends).
+- Menyimpan transaksi di Tabel_Transaksi dan item di Tabel_Detail_Transaksi.
+
+Langkah SQL (dalam transaksi BEGIN/COMMIT):
+
+1) (Opsional) Cari pelanggan guest by nomor HP jika customerId null
+
+  SELECT pelangganid
+  FROM tabel_pelanggan
+  WHERE nomor_hp = $1
+  LIMIT 1;
+
+2) Upsert akun game Mobile Legends (hanya jika gameId = 'mobile-legends')
+
+  SELECT akungameid
+  FROM tabel_akun_game_pelanggan
+  WHERE pelangganid = $1
+    AND kategoriid = (
+      SELECT kategoriid
+      FROM tabel_kategori_produk
+      WHERE nama_kategori = 'Mobile Legends'
+    )
+    AND game_userid = $2;
+
+  -- Jika belum ada:
+  INSERT INTO tabel_akun_game_pelanggan (
+    pelangganid, kategoriid, game_userid, game_nickname, server
+  )
+  VALUES (
+    $1,
+    (SELECT kategoriid FROM tabel_kategori_produk WHERE nama_kategori = 'Mobile Legends'),
+    $2,
+    NULL,
+    $3
+  )
+  RETURNING akungameid;
+
+3) Insert transaksi baru
+
+  INSERT INTO tabel_transaksi (
+    invoice_number, pelangganid, metodeid, status_transaksi
+  )
+  VALUES ($1, $2, $3, 'Pending')
+  RETURNING transaksiid;
+
+4) Insert detail transaksi
+
+  INSERT INTO tabel_detail_transaksi (
+    transaksiid, produkid, akungameid, jumlah
+  )
+  VALUES ($1, $2, $3, $4);
+
+(Terdapat trigger di database yang mengisi harga_modal_saat_transaksi,
+ harga_jual_saat_transaksi, dan keuntungan_item serta mengupdate total_struk
+ dan total_keuntungan di Tabel_Transaksi.)
+
+
+6.2. Update Status Transaksi
+-----------------------------
+Endpoint:
+- POST /api/transactions/:id/status
+
+Fungsi:
+- Mengubah status transaksi dari Pending -> Success / Failed.
+- Hanya boleh diakses oleh owner/admin/ordersAdmin.
+
+SQL:
+
+  CALL sp_Update_Status_Bayar($1, $2);
+
+Di dalam stored procedure `sp_Update_Status_Bayar` biasanya dilakukan:
+- Update kolom status_transaksi di Tabel_Transaksi.
+- (Opsional) Update perhitungan laporan terkait.
+
+
+6.3. Daftar Orders (Pelanggan)
+-------------------------------
+Endpoint:
+- GET /api/orders?status={Status}&customerId={PelangganID}
+
+Fungsi:
+- Menampilkan daftar transaksi (ringkas) untuk halaman Orders pelanggan.
+- Jika customerId dikirim -> filter hanya order milik pelanggan tersebut.
+- Jika tidak -> tampilkan semua order terbaru.
+
+SQL (menggunakan view View_Detail_Transaksi_Lengkap):
+
+  SELECT t.transaksiid, v.*
+  FROM view_detail_transaksi_lengkap v
+  JOIN tabel_transaksi t ON v.invoice_number = t.invoice_number
+  [WHERE v.status_transaksi = $1]
+  [  AND t.pelangganid = $2]
+  ORDER BY v.tanggal_transaksi DESC
+  LIMIT 50;
+
+(Kondisi di dalam [] hanya ditambahkan jika parameter ada.)
+
+
+6.4. Daftar Orders (Admin / Orders Staff)
+-----------------------------------------
+Endpoint:
+- GET /api/admin/orders?status={Status}&customerId={PelangganID}
+
+Fungsi:
+- Sama seperti 6.3, tetapi diproteksi `requireOrdersAdmin`.
+- Dipakai di halaman AdminOrders.
+
+SQL:
+- Sama seperti poin 6.3 (reuse `buildOrdersQuery`).
+
+
+6.5. Detail Order per Invoice
+-----------------------------
+Endpoint:
+- GET /api/orders/invoice/:invoiceNumber
+
+Fungsi:
+- Mengambil seluruh baris detail transaksi untuk satu invoice.
+- Digunakan di halaman OrderDetail (customer/admin).
+
+SQL:
+
+  SELECT t.transaksiid, v.*
+  FROM view_detail_transaksi_lengkap v
+  JOIN tabel_transaksi t ON v.invoice_number = t.invoice_number
+  WHERE v.invoice_number = $1
+  ORDER BY v.tanggal_transaksi DESC;
+
+
+---------------------------------
+7. Laporan Harian (Admin)
+---------------------------------
+
+Endpoint:
+- GET /api/admin/reports/daily
+
+Fungsi:
+- Menampilkan laporan harian omzet & keuntungan bersih.
+- Menggunakan view View_Laporan_Keuntungan_Harian.
+
+SQL:
+
+  SELECT tanggal,
+         jumlah_transaksi_berhasil,
+         total_omzet,
+         total_keuntungan_bersih
+  FROM view_laporan_keuntungan_harian
+  ORDER BY tanggal DESC;
+
+
+Dokumen ini bisa digunakan sebagai lampiran untuk tugas basis data,
+karena menghubungkan setiap fitur backend dengan operasi SQL yang terjadi
+pada PostgreSQL.

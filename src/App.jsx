@@ -18,6 +18,7 @@ import AdminCategories from "./pages/AdminCategories";
 import AdminProducts from "./pages/AdminProducts";
 import AdminHome from "./pages/AdminHome";
 import AdminDailyReport from "./pages/AdminDailyReport";
+import AdminCategoryReport from "./pages/AdminCategoryReport";
 
 import NotFound from "./pages/NotFound";
 
@@ -74,6 +75,14 @@ const App = () => (
               element={(
                 <RequireAdmin>
                   <AdminDailyReport />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/reports/categories"
+              element={(
+                <RequireAdmin>
+                  <AdminCategoryReport />
                 </RequireAdmin>
               )}
             />

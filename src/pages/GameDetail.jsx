@@ -299,11 +299,21 @@ const GameDetail = () => {
           <p className="text-muted-foreground mb-6">Choose the {currencyLabelLower} package that suits your needs</p>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {packages.map((tier) => (
-              <div key={tier.amount} onClick={() => setSelectedPackage(tier)} className="cursor-pointer">
-                <PricingCard amount={tier.amount} price={tier.price} bonus={tier.bonus} popular={tier.popular} currencyLabel={currencyLabel} onSelect={() => setSelectedPackage(tier)} />
-              </div>
-            ))}
+            {packages.map((tier) => {
+              const key = tier.productId ?? `${tier.amount}-${tier.price}`;
+              return (
+                <div key={key} onClick={() => setSelectedPackage(tier)} className="cursor-pointer">
+                  <PricingCard
+                    amount={tier.amount}
+                    price={tier.price}
+                    bonus={tier.bonus}
+                    popular={tier.popular}
+                    currencyLabel={currencyLabel}
+                    onSelect={() => setSelectedPackage(tier)}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 

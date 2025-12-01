@@ -24,4 +24,24 @@ router.get("/api/admin/reports/daily", requireFullAdmin, async (req, res) => {
   }
 });
 
+// Admin report per game category from View_Laporan_Per_Kategori_Game (full admin only)
+router.get("/api/admin/reports/by-category", requireFullAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT nama_kategori, total_item_terjual, total_omzet_kategori, total_profit_kategori
+       FROM view_laporan_per_kategori_game
+       ORDER BY total_profit_kategori DESC`,
+    );
+
+    return res.json({ success: true, rows: result.rows });
+  } catch (err) {
+    console.error("Get category report error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch category report",
+      error: err.message,
+    });
+  }
+});
+
 module.exports = router;
